@@ -1,0 +1,139 @@
+﻿@page "/"
+
+@using System.Globalization
+
+<h3>Счёт за стол</h3>
+
+<h4>Добавить блюдо</h4>
+<input @bind="newSkuName" placeholder="Название" />
+<input @bind="newSkuPrice" type="number" placeholder="Цена" />
+<button @onclick="AddSku">Добавить</button>
+
+<h4>Добавить гостя</h4>
+<input @bind="newGuestName" placeholder="Имя гостя" />
+<button @onclick="AddGuest">Добавить</button>
+
+<h4>Блюда</h4>
+<table>
+    <thead>
+        <tr>
+            <th>Название</th>
+            <th>Цена</th>
+            <th>Кому</th>
+            <th>Общак</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var sku in skus)
+        {
+            <tr>
+                <td>@sku.Name</td>
+                <td>@sku.Price.ToString("C", CultureInfo.GetCultureInfo("ru-RU"))</td>
+                <td>
+                    @foreach (var guest in guests)
+                    {
+                        <label style="margin-right: 10px;">
+                            <input type="checkbox"
+                                   checked="@sku.AssignedGuests.Contains(guest)"
+                                   @onchange="(e) => ToggleGuest(sku, guest, e.Value is bool b && b)" />
+                            @guest.Name
+                        </label>
+                    }
+                </td>
+                <td><input type="checkbox" @bind="sku.IsShared" /></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h4>Итог</h4>
+<table>
+    <thead>
+        <tr>
+            <th>Гость</th>
+            <th>Долг</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var guest in guests)
+        {
+            <tr>
+                <td>@guest.Name</td>
+                <td>@GetDebt(guest).ToString("C", CultureInfo.GetCultureInfo("ru-RU"))</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    class Guest
+    {
+        public string Name { get; set; } = "";
+    }
+
+    class Sku
+    {
+        public string Name { get; set; } = "";
+        public decimal Price { get; set; }
+        public List<Guest> AssignedGuests { get; set; } = new();
+        public bool IsShared { get; set; }
+    }
+
+    List<Guest> guests = new();
+    List<Sku> skus = new();
+
+    string newSkuName = "";
+    decimal newSkuPrice;
+    string newGuestName = "";
+
+    void AddSku()
+    {
+        if (!string.IsNullOrWhiteSpace(newSkuName) && newSkuPrice > 0)
+        {
+            skus.Add(new Sku { Name = newSkuName, Price = newSkuPrice });
+            newSkuName = "";
+            newSkuPrice = 0;
+        }
+    }
+
+    void AddGuest()
+    {
+        if (!string.IsNullOrWhiteSpace(newGuestName))
+        {
+            guests.Add(new Guest { Name = newGuestName });
+            newGuestName = "";
+        }
+    }
+
+    decimal GetDebt(Guest guest)
+    {
+        decimal debt = 0;
+
+        foreach (var sku in skus)
+        {
+            if (sku.IsShared)
+            {
+                debt += sku.Price / guests.Count;
+            }
+            else if (sku.AssignedGuests.Contains(guest))
+            {
+                debt += sku.Price / sku.AssignedGuests.Count;
+            }
+        }
+
+        return Math.Round(debt, 2);
+    }
+    
+    void ToggleGuest(Sku sku, Guest guest, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!sku.AssignedGuests.Contains(guest))
+                sku.AssignedGuests.Add(guest);
+        }
+        else
+        {
+            sku.AssignedGuests.Remove(guest);
+        }
+    }
+}
